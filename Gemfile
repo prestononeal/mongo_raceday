@@ -57,4 +57,5 @@ gem 'will_paginate', '~> 3.0.7'
 
 group :production do
   gem 'rails_12factor'
+  gem 'pg'
 end
