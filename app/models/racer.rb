@@ -32,6 +32,17 @@ class Racer
   #   * offset - document to start results
   #   * limit - number of documents to include
   def self.all(prototype={}, sort={:number=>1}, skip=0, limit=nil)
+    # map internal :population term to :pop document term
+    tmp = {}  # hash needs to stay in stable order provided
+    sort.each {|k,v|
+      k = k.to_sym
+      tmp[k] = v  if [:number, :first_name, :last_name, :gender, :group, :secs].include?(k)
+    }
+    sort=tmp
+
+    # convert to keys and then eliminate any properties not of interest
+    prototype=prototype.symbolize_keys.slice(:number, :first_name, :last_name, :gender, :group, :secs) if !prototype.nil?
+
     Rails.logger.debug "getting all racers, prototype=#{prototype}, sort=#{sort}, skip=#{skip}, limit=#{limit}"
 
     result = collection.find(prototype).sort(sort).skip(skip)
@@ -84,5 +95,29 @@ class Racer
   def destroy
     Rails.logger.debug "destroying racer #{@number} from the DB"
     self.class.collection.find(_id:BSON::ObjectId.from_string(@id)).delete_one
+  end
+
+  # Implements the will_paginate method
+  #   * params - a hash containing:
+  #     * page - current page, defaults to 1
+  #     * per_page - how many documents per page, default of 30
+  def self.paginate params
+    Rails.logger.debug "paginate #{params}"
+    page = (params[:page] ||= 1).to_i
+    limit = (params[:per_page] ||= 30).to_i
+    skip = (page - 1) * limit
+    sort = params[:sort] ||= {}
+
+    racers = []
+    all(params, sort, skip, limit).each do |doc|
+      racers << Racer.new(doc)
+    end
+
+    # get a count of all documents in the collection
+    total = all(params, sort, 0, 1).count
+
+    WillPaginate::Collection.create(page, limit, total) do |pager|
+      pager.replace(racers)
+    end
   end
 end
