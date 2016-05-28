@@ -46,6 +46,19 @@ class Racer
     return result.nil? ? nil : Racer.new(result)
   end
 
+  def persisted?
+    # tell Rails if this object has been saved yet
+    !@id.nil?
+  end
+
+  def created_at
+    nil
+  end
+
+  def updated_at
+    nil
+  end
+
   # Save the state of the current instance in a DB document and store its id
   def save
     Rails.logger.debug "saving racer #{self}"
